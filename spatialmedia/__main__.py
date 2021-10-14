@@ -28,6 +28,7 @@ path = os.path.dirname(sys.modules[__name__].__file__)
 path = os.path.join(path, '..')
 sys.path.insert(0, path)
 from spatialmedia import metadata_utils
+from pprint import pprint 
 
 
 def console(contents):
@@ -37,6 +38,15 @@ def console(contents):
 def main():
   """Main function for printing and injecting spatial media metadata."""
 
+
+  videos_array = []
+  for dirname, dirnames, filenames in os.walk('X:\Temporal\Torrents\VR\ThreeToOne'):
+
+    # print path to all filenames.
+    for filename in filenames:
+        videos_array.append(os.path.join(dirname, filename))
+
+  pprint(videos_array)
   parser = argparse.ArgumentParser(
       usage=
       "%(prog)s [options] [files...]\n\nBy default prints out spatial media "
@@ -48,6 +58,7 @@ def main():
       help=
       "injects spatial media metadata into the first file specified (.mp4 or "
       ".mov) and saves the result to the second file specified")
+ 
   video_group = parser.add_argument_group("Spherical Video")
   video_group.add_argument("-s",
                            "--stereo",
@@ -84,29 +95,35 @@ def main():
       console("Injecting metadata requires both an input file and output file.")
       return
 
-    metadata = metadata_utils.Metadata()
-    metadata.video = metadata_utils.generate_spherical_xml(args.stereo_mode,
-                                                           args.crop)
+    for videofile in videos_array:
 
-    if args.spatial_audio:
-      parsed_metadata = metadata_utils.parse_metadata(args.file[0], console)
-      if not metadata.audio:
-        spatial_audio_description = metadata_utils.get_spatial_audio_description(
-            parsed_metadata.num_audio_channels)
-        if spatial_audio_description.is_supported:
-          metadata.audio = metadata_utils.get_spatial_audio_metadata(
-              spatial_audio_description.order,
-              spatial_audio_description.has_head_locked_stereo)
-        else:
-          console("Audio has %d channel(s) and is not a supported "
-                  "spatial audio format." % (parsed_metadata.num_audio_channels))
-          return
+      injectedname = videofile.split(".")
 
-    if metadata.video:
-      metadata_utils.inject_metadata(args.file[0], args.file[1], metadata,
-                                     console)
-    else:
-      console("Failed to generate metadata.")
+      injectedname = injectedname[0]+"_injected.mp4"
+
+      metadata = metadata_utils.Metadata()
+      metadata.video = metadata_utils.generate_spherical_xml(args.stereo_mode, args.crop)
+
+      if args.spatial_audio:
+        parsed_metadata = metadata_utils.parse_metadata(videofile, console)
+        if not metadata.audio:
+          spatial_audio_description = metadata_utils.get_spatial_audio_description(
+              parsed_metadata.num_audio_channels)
+          if spatial_audio_description.is_supported:
+            metadata.audio = metadata_utils.get_spatial_audio_metadata(
+                spatial_audio_description.order,
+                spatial_audio_description.has_head_locked_stereo)
+          else:
+            console("Audio has %d channel(s) and is not a supported "
+                    "spatial audio format." % (parsed_metadata.num_audio_channels))
+            #return
+
+      if metadata.video:
+        metadata_utils.inject_metadata(videofile, injectedname, metadata,console)
+
+      else:
+        console("Failed to generate metadata.")
+      #return
     return
 
   if len(args.file) > 0:
